@@ -1,4 +1,4 @@
-# @nanoweb/auth-core
+# @nan0web/auth-core
 
 Core authentication library providing base classes and utilities for building authentication systems.
 
@@ -13,7 +13,7 @@ Core authentication library providing base classes and utilities for building au
 ## Installation
 
 ```bash
-npm install @nanoweb/auth-core
+npm install @nan0web/auth-core
 ```
 
 ## Usage
@@ -21,7 +21,7 @@ npm install @nanoweb/auth-core
 ### User Management
 
 ```js
-import { User } from '@nanoweb/auth-core'
+import { User } from '@nan0web/auth-core'
 
 const user = new User({
   name: 'John Doe',
@@ -36,7 +36,7 @@ console.log(user.toString())  // "John Doe <john@example.com>"
 ### Token Expiry Service
 
 ```js
-import { TokenExpiryService } from '@nanoweb/auth-core'
+import { TokenExpiryService } from '@nan0web/auth-core'
 
 const tokenService = new TokenExpiryService(3600000) // 1 hour lifetime
 const isValid = tokenService.isValid(tokenCreationDate)

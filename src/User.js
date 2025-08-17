@@ -1,3 +1,4 @@
+import Role from "./Role.js"
 import TokenExpiryService from "./TokenExpiryService.js"
 
 /**
@@ -10,10 +11,11 @@ import TokenExpiryService from "./TokenExpiryService.js"
  * @property {string | null} [verificationCode]
  * @property {string | null} [resetCode]
  * @property {string | null} [resetCodeAt]
- * @property {string} [role]
+ * @property {string | string[]} [roles]
  * @property {string} [createdAt]
  * @property {string} [updatedAt]
  * @property {Map<string, Date>} [tokens]
+ * @property {TokenExpiryService} [tokenExpiryService]
  */
 
 /**
@@ -21,6 +23,8 @@ import TokenExpiryService from "./TokenExpiryService.js"
  */
 class User {
 	static TOKEN_LIFETIME = 1000 * 60 * 60
+	static TokenExpiryService = TokenExpiryService
+	static Role = Role
 	/** @type {string} */
 	name
 	/** @type {string} */
@@ -33,20 +37,18 @@ class User {
 	verificationCode
 	/** @type {string} */
 	resetCode
-	/** @type {string} */
+	/** @type {Date | null} */
 	resetCodeAt
-	/** @type {string[]} */
+	/** @type {Role[]} */
 	roles
 	/** @type {Date} */
 	createdAt
 	/** @type {Date} */
 	updatedAt
-	/** @type {string} */
-	isPublic
 	/** @type {Map<string, Date>} */
 	#tokens
 	/** @type {TokenExpiryService} */
-	tokenExpiryService
+	tokenExpiryService = new TokenExpiryService()
 	/**
 	 * Creates a new User instance
 	 * @param {UserInput} input - User configuration options
@@ -63,9 +65,8 @@ class User {
 			roles = [],
 			createdAt = new Date(),
 			updatedAt = new Date(),
-			isPublic = false,
 			tokens = new Map(),
-			tokenLifetime = User.TOKEN_LIFETIME
+			tokenExpiryService = this.tokenExpiryService,
 		} = input
 		this.name = String(name)
 		this.email = String(email)
@@ -74,25 +75,43 @@ class User {
 		this.verificationCode = String(verificationCode)
 		this.resetCode = String(resetCode)
 		this.resetCodeAt = resetCodeAt ? new Date(resetCodeAt) : null
-		this.roles = roles.map(String)
+		this.roles = (Array.isArray(roles) ? roles : roles.split(",")).map(r => this.Role.from(r))
 		this.createdAt = new Date(createdAt)
 		this.updatedAt = new Date(updatedAt)
-		this.isPublic = Boolean(isPublic)
 		this.#tokens = tokens instanceof Map
 			? tokens : new Map(Array.isArray(tokens)
 				? tokens : Object.entries(tokens))
 		for (const [token, time] of this.#tokens.entries()) {
 			this.#tokens.set(token, new Date(time))
 		}
-		this.tokenExpiryService = new TokenExpiryService(tokenLifetime)
+		this.tokenExpiryService = this.TokenExpiryService.from(tokenExpiryService)
 	}
 
 	/**
-	 * @param {string} role
+	 * @returns {typeof TokenExpiryService}
+	 */
+	get TokenExpiryService() {
+		return /** @type {typeof User} */ (this.constructor).TokenExpiryService
+	}
+
+	/**
+	 * @returns {typeof Role}
+	 */
+	get Role() {
+		return /** @type {typeof User} */ (this.constructor).Role
+	}
+
+	/**
+	 * @param {string | Role} role
 	 * @returns {boolean} True if roles include the current role, otherwise false.
 	 */
 	is(role) {
-		return this.roles.includes(role)
+		try {
+			const test = this.Role.from(role)
+			return this.roles.some(r => r.value === test.value)
+		} catch {
+			return false
+		}
 	}
 
 	/**
@@ -102,6 +121,7 @@ class User {
 	toObject() {
 		return {
 			...this,
+			roles: this.roles.join(","),
 			createdAt: this.createdAt.toISOString(),
 			updatedAt: this.updatedAt.toISOString(),
 		}
@@ -121,7 +141,7 @@ class User {
 	getTokens(validOnly = false) {
 		if (validOnly) {
 			return new Map(this.#tokens.entries().filter(
-				([token, time]) => this.tokenExpiryService.isValid(time)
+				([, time]) => this.tokenExpiryService.isValid(time)
 			))
 		}
 		return this.#tokens
@@ -135,7 +155,8 @@ class User {
 		return [
 			this.name,
 			this.email ? `<${this.email}>` : 0,
-			this.createdAt.toISOString().slice(0, 19).replace("T", " ")
+			this.createdAt.toISOString().slice(0, 19).replace("T", " "),
+			this.roles.join(", "),
 		].filter(Boolean).join(" ")
 	}
 

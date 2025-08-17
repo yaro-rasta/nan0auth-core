@@ -1,4 +1,5 @@
 chat/
+coverage/
 legacy/
 node_modules/
 test-auth-data/
